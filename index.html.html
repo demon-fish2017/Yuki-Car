@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>云朵的小P车车</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'ZCOOL KuaiLe', 'PingFang SC', 'Comic Sans MS', sans-serif;
+        }
+        
+        #gameContainer {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: linear-gradient(180deg, #87CEEB 0%, #E6E6FA 50%, #FFB6C1 100%);
+            overflow: hidden;
+        }
+        
+        /* 云朵背景 */
+        .cloud {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.9;
+            animation: floatCloud linear infinite;
+        }
+        
+        .cloud::before, .cloud::after {
+            content: '';
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        @keyframes floatCloud {
+            from { transform: translateX(-100px); }
+            to { transform: translateX(calc(100vw + 100px)); }
+        }
+        
+        /* 赛道 */
+        #road {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #90EE90 0%, #90EE90 15%, #696969 15%, #696969 85%, #90EE90 85%, #90EE90 100%);
+        }
+        
+        /* 赛道线 */
+        .road-line {
+            position: absolute;
+            width: 8px;
+            height: 40px;
+            background: #FFF;
+            border-radius: 4px;
+            animation: roadMove 0.5s linear infinite;
+        }
+        
+        @keyframes roadMove {
+            from { transform: translateY(-40px); }
+            to { transform: translateY(40px); }
+        }
+        
+        /* 游戏画布 */
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 顶部UI */
+        #topUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 100%);
+        }
+        
+        .score-box, .lives-box, .coin-box {
+            background: rgba(255,255,255,0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .score-box span, .lives-box span, .coin-box span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .lives-box .heart {
+            font-size: 22px;
+        }
+        
+        .coin-box .coin-icon {
+            width: 24px;
+            height: 24px;
+            background: #FFD700;
+            border-radius: 50%;
+            border: 3px solid #FFA500;
+            animation: coinSpin 1s ease-in-out infinite;
+        }
+        
+        @keyframes coinSpin {
+            0%, 100% { transform: scaleX(1); }
+            50% { transform: scaleX(0.3); }
+        }
+        
+        /* 触摸控制区域 */
+        #touchZones {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            display: flex;
+            z-index: 5;
+        }
+        
+        .touch-zone {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s;
+        }
+        
+        .touch-zone:active {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .touch-zone .arrow {
+            font-size: 60px;
+            opacity: 0.4;
+        }
+        
+        /* 特效文字 */
+        .effect-text {
+            position: absolute;
+            font-size: 32px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: effectFade 1s ease-out forwards;
+            z-index: 20;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        @keyframes effectFade {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+        }
+        
+        /* 开始/结束界面 */
+        #menuScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.5s;
+        }
+        
+        #menuScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .menu-title {
+            font-size: 48px;
+            color: #FFD700;
+            text-shadow: 3px 3px 0 #FF6B6B, 6px 6px 0 #87CEEB;
+            margin-bottom: 20px;
+            animation: titleBounce 2s ease-in-out infinite;
+        }
+        
+        @keyframes titleBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .menu-subtitle {
+            font-size: 24px;
+            color: #FFF;
+            margin-bottom: 40px;
+        }
+        
+        .menu-score {
+            font-size: 28px;
+            color: #FFD700;
+            margin-bottom: 30px;
+        }
+        
+        .start-btn {
+            padding: 20px 60px;
+            font-size: 28px;
+            font-family: inherit;
+            background: linear-gradient(180deg, #FF69B4 0%, #FF1493 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 0 #C71585, 0 15px 30px rgba(0,0,0,0.3);
+            transition: all 0.1s;
+            animation: btnPulse 1.5s ease-in-out infinite;
+        }
+        
+        .start-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #C71585, 0 8px 20px rgba(0,0,0,0.3);
+        }
+        
+        @keyframes btnPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* 速度线效果 */
+        .speed-line {
+            position: absolute;
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            animation: speedLineMove 0.3s linear infinite;
+            opacity: 0.6;
+        }
+        
+        @keyframes speedLineMove {
+            from { transform: translateX(-100px); }
+            to { transform: translateX(100vw); }
+        }
+        
+        /* 屏幕抖动 */
+        @keyframes screenShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .shake {
+            animation: screenShake 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- 云朵背景 -->
+        <div id="clouds"></div>
+        
+        <!-- 赛道 -->
+        <div id="road"></div>
+        
+        <!-- 游戏画布 -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- 顶部UI -->
+        <div id="topUI">
+            <div class="score-box">
+                <span>⭐</span>
+                <span id="score">0</span>
+            </div>
+            <div class="lives-box">
+                <span id="lives">❤️❤️❤️</span>
+            </div>
+            <div class="coin-box">
+                <div class="coin-icon"></div>
+                <span id="coins">0</span>
+            </div>
+        </div>
+        
+        <!-- 触摸控制 -->
+        <div id="touchZones">
+            <div class="touch-zone" id="leftZone">
+                <span class="arrow">◀</span>
+            </div>
+            <div class="touch-zone" id="rightZone">
+                <span class="arrow">▶</span>
+            </div>
+        </div>
+        
+        <!-- 菜单界面 -->
+        <div id="menuScreen">
+            <div class="menu-title">🚗 云朵的小P车车</div>
+            <div class="menu-subtitle">小学生赛车挑战</div>
+            <div class="menu-score" id="menuScore">最高分: 0</div>
+            <button class="start-btn" id="startBtn">开始游戏!</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏配置
+        const CONFIG = {
+            initialSpeed: 5,
+            maxSpeed: 15,
+            acceleration: 0.1,
+            playerWidth: 60,
+            playerHeight: 80,
+            laneWidth: 0,
+            coinValue: 50,
+            maxLives: 3
+        };
+
+        // 游戏状态
+        let game = {
+            running: false,
+            score: 0,
+            coins: 0,
+            lives: CONFIG.maxLives,
+            speed: CONFIG.initialSpeed,
+            player: { x: 0, y: 0, direction: 0 },
+            obstacles: [],
+            coinsList: [],
+            particles: [],
+            roadLines: [],
+            highScore: parseInt(localStorage.getItem('cloudCarHighScore')) || 0
+        };
+
+        // DOM元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('gameContainer');
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const coinsEl = document.getElementById('coins');
+        const menuScreen = document.getElementById('menuScreen');
+        const menuScore = document.getElementById('menuScore');
+        const startBtn = document.getElementById('startBtn');
+        const leftZone = document.getElementById('leftZone');
+        const rightZone = document.getElementById('rightZone');
+        const cloudsContainer = document.getElementById('clouds');
+
+        // 初始化画布
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            CONFIG.laneWidth = canvas.width * 0.7;
+            game.player.x = canvas.width / 2;
+            game.player.y = canvas.height * 0.7;
+        }
+
+        // 创建云朵背景
+        function createClouds() {
+            for (let i = 0; i < 8; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                const size = 50 + Math.random() * 80;
+                cloud.style.width = size + 'px';
+                cloud.style.height = (size * 0.6) + 'px';
+                cloud.style.top = (Math.random() * 40) + '%';
+                cloud.style.animationDuration = (15 + Math.random() * 10) + 's';
+                cloud.style.animationDelay = (Math.random() * 15) + 's';
+                cloudsContainer.appendChild(cloud);
+            }
+        }
+
+        // 初始化道路线
+        function initRoadLines() {
+            game.roadLines = [];
+            const lineSpacing = 80;
+            for (let i = 0; i < 10; i++) {
+                game.roadLines.push({
+                    y: i * lineSpacing,
+                    x: canvas.width / 2
+                });
+            }
+        }
+
+        // 绘制赛道
+        function drawRoad() {
+            const roadLeft = canvas.width * 0.15;
+            const roadRight = canvas.width * 0.85;
+            
+            // 道路边线
+            ctx.strokeStyle = '#FFF';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(roadLeft, 0);
+            ctx.lineTo(roadLeft, canvas.height);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(roadRight, 0);
+            ctx.lineTo(roadRight, canvas.height);
+            ctx.stroke();
+            
+            // 道路中线
+            game.roadLines.forEach((line, i) => {
+                const dashHeight = 30;
+                const gapHeight = 50;
+                const totalHeight = dashHeight + gapHeight;
+                
+                ctx.fillStyle = '#FFF';
+                ctx.fillRect(line.x - 4, line.y, 8, dashHeight);
+                
+                line.y += game.speed;
+                if (line.y > canvas.height) {
+                    line.y = -dashHeight;
+                }
+            });
+        }
+
+        // 绘制云朵的小P车车
+        function drawPlayer() {
+            const x = game.player.x;
+            const y = game.player.y;
+            const w = CONFIG.playerWidth;
+            const h = CONFIG.playerHeight;
+            
+            ctx.save();
+            
+            // 车身阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + h/2 + 10, w/2 - 5, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 彩虹拖尾粒子
+            if (game.running) {
+                if (Math.random() > 0.5) {
+                    game.particles.push({
+                        x: x + (Math.random() - 0.5) * w * 0.5,
+                        y: y + h/2,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: 3 + Math.random() * 2,
+                        life: 1,
+                        color: ['#FF69B4', '#87CEEB', '#FFD700', '#98FB98', '#DDA0DD'][Math.floor(Math.random() * 5)]
+                    });
+                }
+            }
+            
+            // 绘制粒子
+            game.particles = game.particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.03;
+                if (p.life <= 0) return false;
+                
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 6 * p.life, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                return true;
+            });
+            
+            // 车身主体 - 粉色
+            const gradient = ctx.createLinearGradient(x - w/2, y, x + w/2, y);
+            gradient.addColorStop(0, '#FFB6C1');
+            gradient.addColorStop(0.5, '#FF69B4');
+            gradient.addColorStop(1, '#FF1493');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(x - w/2 + 5, y - h/2, w - 10, h, 15);
+            ctx.fill();
+            
+            // 车顶云朵装饰
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.ellipse(x, y - h/2 - 10, 20, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(x - 15, y - h/2 - 8, 12, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(x + 15, y - h/2 - 8, 12, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 翅膀
+            ctx.fillStyle = '#FFB6C1';
+            // 左翅膀
+            ctx.beginPath();
+            ctx.ellipse(x - w/2 - 5, y, 15, 8, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // 右翅膀
+            ctx.beginPath();
+            ctx.ellipse(x + w/2 + 5, y, 15, 8, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 车窗
+            ctx.fillStyle = '#87CEEB';
+            ctx.beginPath();
+            ctx.roundRect(x - w/4, y - h/4, w/2, h/3, 8);
+            ctx.fill();
+            
+            // 车轮
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.roundRect(x - w/2 - 3, y - h/3, 8, 20, 4);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(x + w/2 - 5, y - h/3, 8, 20, 4);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(x - w/2 - 3, y + h/4, 8, 20, 4);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(x + w/2 - 5, y + h/4, 8, 20, 4);
+            ctx.fill();
+            
+            // 微笑表情
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(x - 8, y + 5, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 8, y + 5, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#FF1493';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y + 12, 8, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        // 绘制障碍物
+        function drawObstacles() {
+            game.obstacles.forEach(obs => {
+                ctx.save();
+                
+                if (obs.type === 'cone') {
+                    // 锥桶 - 可爱版本
+                    const gradient = ctx.createLinearGradient(obs.x - 15, obs.y, obs.x + 15, obs.y);
+                    gradient.addColorStop(0, '#FF6B6B');
+                    gradient.addColorStop(0.5, '#FF8C00');
+                    gradient.addColorStop(1, '#FF6B6B');
+                    ctx.fillStyle = gradient;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x, obs.y - 30);
+                    ctx.lineTo(obs.x + 18, obs.y + 20);
+                    ctx.lineTo(obs.x - 18, obs.y + 20);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // 锥桶条纹
+                    ctx.fillStyle = '#FFF';
+                    ctx.fillRect(obs.x - 10, obs.y - 5, 20, 5);
+                    
+                    // 锥桶底座
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(obs.x - 20, obs.y + 18, 40, 5);
+                } else if (obs.type === 'car') {
+                    // 其他车辆
+                    ctx.fillStyle = '#4A90D9';
+                    ctx.beginPath();
+                    ctx.roundRect(obs.x - 25, obs.y - 20, 50, 40, 8);
+                    ctx.fill();
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.beginPath();
+                    ctx.roundRect(obs.x - 18, obs.y - 12, 36, 18, 4);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            });
+        }
+
+        // 绘制金币
+        function drawCoins() {
+            game.coinsList.forEach(coin => {
+                ctx.save();
+                
+                const scale = 0.7 + Math.sin(Date.now() / 200) * 0.1;
+                ctx.translate(coin.x, coin.y);
+                ctx.scale(scale, 1);
+                
+                // 金币外圈
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 金币内圈
+                ctx.fillStyle = '#FFA500';
+                ctx.beginPath();
+                ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 金币高光
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('¥', 0, 0);
+                
+                ctx.restore();
+            });
+        }
+
+        // 生成障碍物
+        function spawnObstacle() {
+            const roadLeft = canvas.width * 0.2;
+            const roadRight = canvas.width * 0.8;
+            const x = roadLeft + Math.random() * (roadRight - roadLeft);
+            
+            game.obstacles.push({
+                x: x,
+                y: -50,
+                type: Math.random() > 0.6 ? 'car' : 'cone'
+            });
+        }
+
+        // 生成金币
+        function spawnCoin() {
+            const roadLeft = canvas.width * 0.2;
+            const roadRight = canvas.width * 0.8;
+            const x = roadLeft + Math.random() * (roadRight - roadLeft);
+            
+            game.coinsList.push({
+                x: x,
+                y: -50
+            });
+        }
+
+        // 碰撞检测
+        function checkCollision(obj) {
+            const playerLeft = game.player.x - CONFIG.playerWidth / 2 + 10;
+            const playerRight = game.player.x + CONFIG.playerWidth / 2 - 10;
+            const playerTop = game.player.y - CONFIG.playerHeight / 2;
+            const playerBottom = game.player.y + CONFIG.playerHeight / 2;
+            
+            const objLeft = obj.x - 20;
+            const objRight = obj.x + 20;
+            const objTop = obj.y - 25;
+            const objBottom = obj.y + 25;
+            
+            return playerLeft < objRight && playerRight > objLeft &&
+                   playerTop < objBottom && playerBottom > objTop;
+        }
+
+        // 碰撞处理
+        function handleCollision() {
+            game.lives--;
+            updateLivesDisplay();
+            
+            // 屏幕抖动
+            container.classList.add('shake');
+            setTimeout(() => container.classList.remove('shake'), 300);
+            
+            // 显示特效文字
+            showEffectText('哎呀!', game.player.x, game.player.y - 50, '#FF6B6B');
+            
+            if (game.lives <= 0) {
+                gameOver();
+            } else {
+                // 短暂无敌
+                game.invincible = true;
+                setTimeout(() => game.invincible = false, 1500);
+            }
+        }
+
+        // 显示特效文字
+        function showEffectText(text, x, y, color) {
+            const el = document.createElement('div');
+            el.className = 'effect-text';
+            el.textContent = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.color = color;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        // 更新分数显示
+        function updateScoreDisplay() {
+            scoreEl.textContent = game.score;
+            coinsEl.textContent = game.coins;
+        }
+
+        // 更新生命显示
+        function updateLivesDisplay() {
+            livesEl.textContent = '❤️'.repeat(game.lives) + '🖤'.repeat(CONFIG.maxLives - game.lives);
+        }
+
+        // 游戏结束
+        function gameOver() {
+            game.running = false;
+            
+            if (game.score > game.highScore) {
+                game.highScore = game.score;
+                localStorage.setItem('cloudCarHighScore', game.highScore);
+            }
+            
+            menuScore.textContent = `最高分: ${game.highScore} | 本次: ${game.score}`;
+            menuScreen.classList.remove('hidden');
+        }
+
+        // 重置游戏
+        function resetGame() {
+            game.score = 0;
+            game.coins = 0;
+            game.lives = CONFIG.maxLives;
+            game.speed = CONFIG.initialSpeed;
+            game.player.x = canvas.width / 2;
+            game.player.direction = 0;
+            game.obstacles = [];
+            game.coinsList = [];
+            game.particles = [];
+            
+            updateScoreDisplay();
+            updateLivesDisplay();
+        }
+
+        // 开始游戏
+        function startGame() {
+            resetGame();
+            menuScreen.classList.add('hidden');
+            game.running = true;
+            gameLoop();
+        }
+
+        // 游戏主循环
+        let lastObstacleTime = 0;
+        let lastCoinTime = 0;
+        
+        function gameLoop() {
+            if (!game.running) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            drawRoad();
+            
+            // 移动和绘制障碍物
+            game.obstacles = game.obstacles.filter(obs => {
+                obs.y += game.speed;
+                
+                if (obs.y > canvas.height + 50) {
+                    return false;
+                }
+                
+                // 碰撞检测
+                if (!game.invincible && checkCollision(obs)) {
+                    handleCollision();
+                    return false;
+                }
+                
+                drawObstacles(obs);
+                return true;
+            });
+            
+            // 移动和绘制金币
+            game.coinsList = game.coinsList.filter(coin => {
+                coin.y += game.speed;
+                
+                if (coin.y > canvas.height + 30) {
+                    return false;
+                }
+                
+                // 金币收集
+                if (checkCollision(coin)) {
+                    game.coins++;
+                    game.score += CONFIG.coinValue;
+                    updateScoreDisplay();
+                    showEffectText('叮! +50', coin.x, coin.y - 30, '#FFD700');
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // 绘制金币
+            drawCoins();
+            
+            // 绘制玩家
+            drawPlayer();
+            
+            // 生成新障碍物
+            const now = Date.now();
+            if (now - lastObstacleTime > 2000 - game.speed * 100) {
+                if (Math.random() > 0.3) {
+                    spawnObstacle();
+                }
+                lastObstacleTime = now;
+            }
+            
+            // 生成新金币
+            if (now - lastCoinTime > 1500) {
+                if (Math.random() > 0.5) {
+                    spawnCoin();
+                }
+                lastCoinTime = now;
+            }
+            
+            // 增加分数和时间
+            game.score += 1;
+            updateScoreDisplay();
+            
+            // 增加速度
+            if (game.speed < CONFIG.maxSpeed) {
+                game.speed += CONFIG.acceleration / 60;
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 玩家移动
+        let movingLeft = false;
+        let movingRight = false;
+        
+        function movePlayer() {
+            const roadLeft = canvas.width * 0.18;
+            const roadRight = canvas.width * 0.82;
+            const speed = 8;
+            
+            if (movingLeft && game.player.x > roadLeft) {
+                game.player.x -= speed;
+            }
+            if (movingRight && game.player.x < roadRight) {
+                game.player.x += speed;
+            }
+        }
+
+        // 事件监听
+        startBtn.addEventListener('click', startGame);
+        
+        leftZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            movingLeft = true;
+        });
+        leftZone.addEventListener('touchend', () => movingLeft = false);
+        
+        rightZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            movingRight = true;
+        });
+        rightZone.addEventListener('touchend', () => movingRight = false);
+        
+        // 键盘控制（用于电脑测试）
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') movingLeft = true;
+            if (e.key === 'ArrowRight') movingRight = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') movingLeft = false;
+            if (e.key === 'ArrowRight') movingRight = false;
+        });
+
+        // 持续移动
+        setInterval(() => {
+            if (game.running) movePlayer();
+        }, 16);
+
+        // 初始化
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            initRoadLines();
+        });
+        
+        resizeCanvas();
+        createClouds();
+        initRoadLines();
+        
+        // 显示最高分
+        menuScore.textContent = `最高分: ${game.highScore}`;
+    </script>
+</body>
+</html>
